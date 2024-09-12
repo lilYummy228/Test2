@@ -48,7 +48,7 @@ namespace Test2
 
         public void Add(Good product, int count)
         {
-            IReadOnlyCell cell = _goods.FirstOrDefault(cells => cells.Good == product);
+            IReadOnlyCell cell = _goods.FirstOrDefault(cells => cells.Product == product);
 
             if (cell == null)
                 throw new ArgumentNullException(nameof(cell));
@@ -56,10 +56,10 @@ namespace Test2
             if (count > cell.Count)
                 throw new ArgumentOutOfRangeException(nameof(count));
 
-            PutInCart(product, count);
+            PutIn(product, count);
         }
 
-        public void PutInCart(Good product, int count)
+        public void PutIn(Good product, int count)
         {
             Cell cartCell = FindCell(_order, product);
 
@@ -79,18 +79,16 @@ namespace Test2
 
             foreach (Cell cell in _order)
             {
-                _warehouse.Remove(FindCell((List<Cell>)_warehouse.Cells, cell.Good), cell.Count);
+                _warehouse.Remove(FindCell((List<Cell>)_warehouse.Cells, cell.Product), cell.Count);
 
-                order += $"{cell.Good.Name}: {cell.Count}\n";
+                order += $"{cell.Product.Name}: {cell.Count}\n";
             }
 
             return new Order(order);
         }
 
-        private Cell FindCell(List<Cell> cells, Good product)
-        {
-             return cells.FirstOrDefault(cell => cell.Good == product);
-        }
+        private Cell FindCell(List<Cell> cells, Good product) => 
+            cells.FirstOrDefault(cell => cell.Product == product);
     }
 
     public class Shop
@@ -118,18 +116,18 @@ namespace Test2
             _cells.Add(new Cell(good, count));
 
         public void Remove(Cell cell, int count) =>
-            _cells.Insert(_cells.IndexOf(cell), new Cell(cell.Good, cell.Count - count));
+            _cells.Insert(_cells.IndexOf(cell), new Cell(cell.Product, cell.Count - count));
     }
 
     public class Cell : IReadOnlyCell
     {
-        public Cell(Good good, int count)
+        public Cell(Good product, int count)
         {
-            Good = good ?? throw new ArgumentNullException(nameof(good));
+            Product = product ?? throw new ArgumentNullException(nameof(product));
             Count = count >= 0 ? count : throw new ArgumentOutOfRangeException(nameof(count));
         }
 
-        public Good Good { get; private set; }
+        public Good Product { get; private set; }
         public int Count { get; private set; }
     }
 
@@ -151,7 +149,7 @@ namespace Test2
 
     public interface IReadOnlyCell
     {
-        Good Good { get; }
+        Good Product { get; }
         int Count { get; }
     }
 
