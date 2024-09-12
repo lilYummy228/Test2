@@ -138,7 +138,7 @@ namespace Test2
         public Good(string name) =>
             Name = name;
 
-        public string Name { get; private set; }
+        public string Name { get; }
     }
 
     public class Order
@@ -146,7 +146,7 @@ namespace Test2
         public Order(string paylink) =>
             Paylink = paylink;
 
-        public string Paylink { get; private set; }
+        public string Paylink { get; }
     }
 
     public interface IReadOnlyCell
