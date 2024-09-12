@@ -34,7 +34,7 @@ namespace Test2
 
     public class Cart
     {
-        private IReadOnlyList<IReadOnlyCell> _goods; 
+        private IReadOnlyList<IReadOnlyCell> _goods;  
         private IWarehouse _warehouse;
         private List<Cell> _cart;
 
