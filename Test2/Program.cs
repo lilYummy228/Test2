@@ -36,19 +36,19 @@ namespace Test2
     {
         private IReadOnlyList<IReadOnlyCell> _goods;  
         private IWarehouse _warehouse;
-        private List<Cell> _cart;
+        private List<Cell> _order;
 
         public Cart(IWarehouse warehouse)
         {
             _warehouse = warehouse;
             _goods = _warehouse.Cells;
 
-            _cart = new List<Cell>();
+            _order = new List<Cell>();
         }
 
-        public void Add(Good good, int count)
+        public void Add(Good product, int count)
         {
-            IReadOnlyCell cell = _goods.FirstOrDefault(cells => cells.Good == good);
+            IReadOnlyCell cell = _goods.FirstOrDefault(cells => cells.Good == product);
 
             if (cell == null)
                 throw new ArgumentNullException(nameof(cell));
@@ -56,28 +56,28 @@ namespace Test2
             if (count > cell.Count)
                 throw new ArgumentOutOfRangeException(nameof(count));
 
-            PutInCart(good, count);
+            PutInCart(product, count);
         }
 
-        public void PutInCart(Good good, int count)
+        public void PutInCart(Good product, int count)
         {
-            Cell cartCell = FindCell(_cart, good);
+            Cell cartCell = FindCell(_order, product);
 
-            if (_cart.Contains(cartCell))
+            if (cartCell == null)
             {
-                _cart.Insert(_cart.IndexOf(cartCell), new Cell(good, cartCell.Count + count));
-                _cart.RemoveAt(_cart.IndexOf(cartCell));
+                _order.Insert(_order.IndexOf(cartCell), new Cell(product, cartCell.Count + count));
+                _order.RemoveAt(_order.IndexOf(cartCell));
                 return;
             }
 
-            _cart.Add(new Cell(good, count));
+            _order.Add(new Cell(product, count));
         }
 
         public Order Order()
         {
             string order = $"Ваша корзина\n";
 
-            foreach (Cell cell in _cart)
+            foreach (Cell cell in _order)
             {
                 _warehouse.Remove(FindCell((List<Cell>)_warehouse.Cells, cell.Good), cell.Count);
 
@@ -87,9 +87,9 @@ namespace Test2
             return new Order(order);
         }
 
-        private Cell FindCell(List<Cell> cells, Good good)
+        private Cell FindCell(List<Cell> cells, Good product)
         {
-             return cells.FirstOrDefault(cell => cell.Good == good);
+             return cells.FirstOrDefault(cell => cell.Good == product);
         }
     }
 
