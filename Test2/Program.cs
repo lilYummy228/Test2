@@ -21,49 +21,64 @@ namespace Test2
             //Вывод всех товаров на складе с их остатком
 
             Cart cart = shop.Cart();
-            cart.Add(iPhone12, 4);
-            cart.Add(iPhone11, 1); //при такой ситуации возникает ошибка так, как нет нужного количества товара на складе
+            cart.Delive(iPhone12, 4);
+            cart.Delive(iPhone11, 1); //при такой ситуации возникает ошибка так, как нет нужного количества товара на складе
 
             //Вывод всех товаров в корзине
 
             Console.WriteLine(cart.Order().Paylink);
 
-            cart.Add(iPhone12, 9); //Ошибка, после заказа со склада убираются заказанные товары
+            cart.Delive(iPhone12, 9); //Ошибка, после заказа со склада убираются заказанные товары
         }
     }
 
-    public class Cart
+    public class Cart : ProductManager
     {
-        private IReadOnlyList<IReadOnlyCell> _goods;  
         private IWarehouse _warehouse;
-        private List<Cell> _order;
+        private List<IReadOnlyCell> _order;
 
         public Cart(IWarehouse warehouse)
         {
             _warehouse = warehouse;
-            _goods = _warehouse.Cells;
 
-            _order = new List<Cell>();
+            _order = new List<IReadOnlyCell>();
         }
 
-        public void Add(Good product, int count)
+        public override void Delive(Good product, int count)
         {
-            IReadOnlyCell cell = _goods.FirstOrDefault(cells => cells.Product == product);
+            IReadOnlyCell warehouseCell = GetCell(_warehouse.Cells, product);
 
-            if (cell == null)
-                throw new ArgumentNullException(nameof(cell));
+            if (warehouseCell == null)
+                throw new ArgumentNullException(nameof(warehouseCell));
 
-            if (count > cell.Count)
+            if (count > warehouseCell.Count)
                 throw new ArgumentOutOfRangeException(nameof(count));
 
             PutIn(product, count);
         }
 
-        public void PutIn(Good product, int count)
-        {
-            Cell cartCell = FindCell(_order, product);
+        public override void Remove(Good product, int count) =>
+            throw new NotImplementedException();
 
-            if (cartCell == null)
+        public Order Order()
+        {
+            string order = $"Ваша корзина\n";
+
+            foreach (Cell cell in _order)
+            {
+                _warehouse.Remove(cell.Product, cell.Count);
+
+                order += $"{cell.Product.Name}: {cell.Count}\n";
+            }
+
+            return new Order(order);
+        }
+
+        private void PutIn(Good product, int count)
+        {
+            IReadOnlyCell cartCell = GetCell(_order, product);
+
+            if (cartCell != null)
             {
                 _order.Insert(_order.IndexOf(cartCell), new Cell(product, cartCell.Count + count));
                 _order.RemoveAt(_order.IndexOf(cartCell));
@@ -72,51 +87,38 @@ namespace Test2
 
             _order.Add(new Cell(product, count));
         }
-
-        public Order Order()
-        {
-            string order = $"Ваша корзина\n";
-
-            foreach (Cell cell in _order)
-            {
-                _warehouse.Remove(FindCell((List<Cell>)_warehouse.Cells, cell.Product), cell.Count);
-
-                order += $"{cell.Product.Name}: {cell.Count}\n";
-            }
-
-            return new Order(order);
-        }
-
-        private Cell FindCell(List<Cell> cells, Good product) => 
-            cells.FirstOrDefault(cell => cell.Product == product);
     }
 
     public class Shop
     {
-        public Warehouse Warehouse { get; private set; }
-
         public Shop(Warehouse warehouse) =>
             Warehouse = warehouse ?? throw new ArgumentNullException(nameof(warehouse));
+
+        public Warehouse Warehouse { get; private set; }
 
         public Cart Cart() =>
             new Cart(Warehouse);
     }
 
-    public class Warehouse : IWarehouse
+    public class Warehouse : ProductManager, IWarehouse
     {
-        private readonly List<Cell> _cells;
+        private readonly List<IReadOnlyCell> _cells;
 
         public Warehouse() =>
-            _cells = new List<Cell>();
+            _cells = new List<IReadOnlyCell>();
 
         public IReadOnlyList<IReadOnlyCell> Cells =>
             _cells;
 
-        public void Delive(Good good, int count) =>
-            _cells.Add(new Cell(good, count));
+        public override void Delive(Good product, int count) =>
+            _cells.Add(new Cell(product, count));
 
-        public void Remove(Cell cell, int count) =>
-            _cells.Insert(_cells.IndexOf(cell), new Cell(cell.Product, cell.Count - count));
+        public override void Remove(Good product, int count)
+        {
+            IReadOnlyCell reqieredCell = GetCell(_cells, product);
+
+            _cells.Insert(_cells.IndexOf(reqieredCell), new Cell(product, reqieredCell.Count - count));
+        }
     }
 
     public class Cell : IReadOnlyCell
@@ -147,6 +149,16 @@ namespace Test2
         public string Paylink { get; }
     }
 
+    public abstract class ProductManager
+    {
+        public abstract void Delive(Good product, int count);
+
+        public abstract void Remove(Good product, int count);
+
+        public IReadOnlyCell GetCell(IReadOnlyList<IReadOnlyCell> cells, Good product) =>
+            cells.FirstOrDefault(cell => cell.Product == product);
+    }
+
     public interface IReadOnlyCell
     {
         Good Product { get; }
@@ -157,6 +169,6 @@ namespace Test2
     {
         IReadOnlyList<IReadOnlyCell> Cells { get; }
 
-        void Remove(Cell cell, int count);
+        void Remove(Good product, int count);
     }
 }
