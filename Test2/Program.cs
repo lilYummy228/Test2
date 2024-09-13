@@ -156,7 +156,7 @@ namespace Test2
         public abstract void Remove(Good product, int count);
 
         public IReadOnlyCell GetCell(IReadOnlyList<IReadOnlyCell> cells, Good product) =>
-            cells.FirstOrDefault(cell => cell.Product == product);
+            cells.FirstOrDefault(cell => cell.Product == product//);
     }
 
     public interface IReadOnlyCell
