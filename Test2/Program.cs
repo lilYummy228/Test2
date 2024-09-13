@@ -32,33 +32,40 @@ namespace Test2
         }
     }
 
-    public class Cart : ProductManager
+    public class Cart
     {
-        private IWarehouse _warehouse;
-        private List<IReadOnlyCell> _order;
+        private readonly IWarehouse _warehouse;
+        private readonly List<Cell> _order;
 
         public Cart(IWarehouse warehouse)
         {
             _warehouse = warehouse;
 
-            _order = new List<IReadOnlyCell>();
+            _order = new List<Cell>();
         }
 
-        public override void Delive(Good product, int count)
+        public void Delive(Good product, int count)
         {
-            IReadOnlyCell warehouseCell = GetCell(_warehouse.Cells, product);
+            Cell warehouseCell = _warehouse.GetCell(_warehouse.Cells, product);
 
             if (warehouseCell == null)
                 throw new ArgumentNullException(nameof(warehouseCell));
 
-            if (count > warehouseCell.Count)
+            if (_order.Count > 0)
+            {
+                Cell cell = _warehouse.GetCell(_order, product);
+
+                if (_order.Contains(cell))
+                    if (_order[_order.IndexOf(cell)].Count + count > warehouseCell.Count)
+                        throw new ArgumentOutOfRangeException(nameof(cell.Count));
+            }
+            else if (count > warehouseCell.Count)
+            {
                 throw new ArgumentOutOfRangeException(nameof(count));
+            }
 
             PutIn(product, count);
         }
-
-        public override void Remove(Good product, int count) =>
-            throw new NotImplementedException();
 
         public Order Order()
         {
@@ -71,12 +78,14 @@ namespace Test2
                 order += $"{cell.Product.Name}: {cell.Count}\n";
             }
 
+            _order.Clear();
+
             return new Order(order);
         }
 
         private void PutIn(Good product, int count)
         {
-            IReadOnlyCell cartCell = GetCell(_order, product);
+            Cell cartCell = _warehouse.GetCell(_order, product);
 
             if (cartCell != null)
             {
@@ -94,34 +103,37 @@ namespace Test2
         public Shop(Warehouse warehouse) =>
             Warehouse = warehouse ?? throw new ArgumentNullException(nameof(warehouse));
 
-        public Warehouse Warehouse { get; private set; }
+        public Warehouse Warehouse { get; }
 
         public Cart Cart() =>
             new Cart(Warehouse);
     }
 
-    public class Warehouse : ProductManager, IWarehouse
+    public class Warehouse : IWarehouse
     {
-        private readonly List<IReadOnlyCell> _cells;
+        private readonly List<Cell> _cells;
 
         public Warehouse() =>
-            _cells = new List<IReadOnlyCell>();
+            _cells = new List<Cell>();
 
-        public IReadOnlyList<IReadOnlyCell> Cells =>
+        public IReadOnlyList<Cell> Cells =>
             _cells;
 
-        public override void Delive(Good product, int count) =>
+        public void Delive(Good product, int count) =>
             _cells.Add(new Cell(product, count));
 
-        public override void Remove(Good product, int count)
+        public void Remove(Good product, int count)
         {
-            IReadOnlyCell reqieredCell = GetCell(_cells, product);
+            Cell reqieredCell = GetCell(_cells, product);
 
             _cells.Insert(_cells.IndexOf(reqieredCell), new Cell(product, reqieredCell.Count - count));
         }
+
+        public Cell GetCell(IReadOnlyList<Cell> cells, Good product) =>
+            cells.FirstOrDefault(cell => cell.Product == product);
     }
 
-    public class Cell : IReadOnlyCell
+    public class Cell
     {
         public Cell(Good product, int count)
         {
@@ -129,8 +141,8 @@ namespace Test2
             Count = count >= 0 ? count : throw new ArgumentOutOfRangeException(nameof(count));
         }
 
-        public Good Product { get; private set; }
-        public int Count { get; private set; }
+        public Good Product { get; }
+        public int Count { get; }
     }
 
     public class Good
@@ -149,26 +161,14 @@ namespace Test2
         public string Paylink { get; }
     }
 
-    public abstract class ProductManager
-    {
-        public abstract void Delive(Good product, int count);
-
-        public abstract void Remove(Good product, int count);
-
-        public IReadOnlyCell GetCell(IReadOnlyList<IReadOnlyCell> cells, Good product) =>
-            cells.FirstOrDefault(cell => cell.Product == product);
-    }
-
-    public interface IReadOnlyCell
-    {
-        Good Product { get; }
-        int Count { get; }
-    }
-
     public interface IWarehouse
     {
-        IReadOnlyList<IReadOnlyCell> Cells { get; }
+        IReadOnlyList<Cell> Cells { get; }
 
         void Remove(Good product, int count);
+
+        void Delive(Good product, int count);
+
+        Cell GetCell(IReadOnlyList<Cell> cells, Good product);
     }
 }
