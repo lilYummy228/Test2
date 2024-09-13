@@ -55,7 +55,7 @@ namespace Test2
             {
                 Cell cell = _warehouse.GetCell(_order, product);
 
-                if (_order.Contains(cell))
+                if (cell != null)
                     if (_order[_order.IndexOf(cell)].Count + count > warehouseCell.Count)
                         throw new ArgumentOutOfRangeException(nameof(cell.Count));
             }
