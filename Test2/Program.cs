@@ -37,18 +37,18 @@ namespace Test2
         private readonly IDictionary<Good, int> _order = new Dictionary<Good, int>();
 
         public Cart(IWarehouse warehouse) =>
-            _warehouse = warehouse ?? throw new ArgumentNullException($"'{nameof(warehouse)}' is null");
+            _warehouse = warehouse ?? throw new ArgumentNullException($"{nameof(warehouse)} is null");
 
         public void Add(Good product, int count)
         {
             if (product == null)
-                throw new ArgumentNullException($"'{nameof(product)}' is null");
+                throw new ArgumentNullException($"{nameof(product)} is null");
 
             if (count <= 0)
-                throw new ArgumentOutOfRangeException($"'{nameof(count)}' is less than or equal to zero");
+                throw new ArgumentOutOfRangeException($"{nameof(count)} is less than or equal to zero");
 
-            if (!_warehouse.Contains(product, count))
-                throw new ArgumentException($"'{product.Name}' doesn't exist in count of {count}");
+            if (!_warehouse.HasEnough(product, count))
+                throw new ArgumentException($"{product.Name} doesn't exist in count of {count}");
 
             if (!_order.ContainsKey(product))
                 _order[product] = 0;
@@ -96,7 +96,7 @@ namespace Test2
     {
         void Remove(Good product, int count);
 
-        bool Contains(Good product, int count);
+        bool HasEnough(Good product, int count);
     }
 
     public class Warehouse : IWarehouse
@@ -117,13 +117,13 @@ namespace Test2
         {
             ExceptionCheck(product, count);
 
-            if (!Contains(product, count))
-                throw new InvalidOperationException($"'{product.Name}' doesn't exist in count of {count}");
+            if (!HasEnough(product, count))
+                throw new InvalidOperationException($"{product.Name} doesn't exist in count of {count}");
 
             _goods[product] -= count;
         }
 
-        public bool Contains(Good product, int count)
+        public bool HasEnough(Good product, int count)
         {
             if (!_goods.TryGetValue(product, out int value))
                 return false;                   
@@ -137,10 +137,10 @@ namespace Test2
         private void ExceptionCheck(Good product, int count)
         {
             if (product == null)
-                throw new ArgumentNullException($"'{nameof(product)}' is null");
+                throw new ArgumentNullException($"{nameof(product)} is null");
 
             if (count <= 0)
-                throw new ArgumentOutOfRangeException($"'{nameof(count)}' is less than or equal to zero");
+                throw new ArgumentOutOfRangeException($"{nameof(count)} is less than or equal to zero");
         }
     }
 
@@ -149,7 +149,7 @@ namespace Test2
         public Good(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentNullException($"'{nameof(name)}' string is empty");
+                throw new ArgumentNullException($"{nameof(name)} string is empty");
 
             Name = name;
         }
