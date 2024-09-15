@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Test2
 {
@@ -15,142 +14,63 @@ namespace Test2
 
             Shop shop = new Shop(warehouse);
 
-            warehouse.Delive(iPhone12, 10);
-            warehouse.Delive(iPhone11, 1);
+            warehouse.Delive(iPhone12, 100);
+            warehouse.Delive(iPhone11, 100);
 
             //Вывод всех товаров на складе с их остатком
 
             Cart cart = shop.Cart();
-            cart.Delive(iPhone12, 4);
-            cart.Delive(iPhone11, 1); //при такой ситуации возникает ошибка так, как нет нужного количества товара на складе
+            cart.Add(iPhone12, 4);
+            cart.Add(iPhone11, 3); //при такой ситуации возникает ошибка так, как нет нужного количества товара на складе
 
             //Вывод всех товаров в корзине
 
             Console.WriteLine(cart.Order().Paylink);
 
-            cart.Delive(iPhone12, 9); //Ошибка, после заказа со склада убираются заказанные товары
+            cart.Add(iPhone12, 9); //Ошибка, после заказа со склада убираются заказанные товары
         }
     }
 
     public class Cart
     {
         private readonly IWarehouse _warehouse;
-        private readonly List<Cell> _order;
+        private readonly IDictionary<Good, int> _order = new Dictionary<Good, int>();
 
-        public Cart(IWarehouse warehouse)
+        public Cart(IWarehouse warehouse) =>
+            _warehouse = warehouse ?? throw new ArgumentNullException($"'{nameof(warehouse)}' is null");
+
+        public void Add(Good product, int count)
         {
-            _warehouse = warehouse;
+            if (product == null)
+                throw new ArgumentNullException($"'{nameof(product)}' is null");
 
-            _order = new List<Cell>();
-        }
+            if (count <= 0)
+                throw new ArgumentOutOfRangeException($"'{nameof(count)}' is less than or equal to zero");
 
-        public void Delive(Good product, int count)
-        {
-            Cell warehouseCell = _warehouse.GetCell(_warehouse.Cells, product);
+            if (!_warehouse.Contains(product, count))
+                throw new ArgumentException($"'{product.Name}' doesn't exist in count of {count}");
 
-            if (warehouseCell == null)
-                throw new ArgumentNullException(nameof(warehouseCell));
+            if (!_order.ContainsKey(product))
+                _order[product] = 0;
 
-            if (_order.Count > 0)
-            {
-                Cell cell = _warehouse.GetCell(_order, product);
-
-                if (cell != null)
-                    if (_order[_order.IndexOf(cell)].Count + count > warehouseCell.Count)
-                        throw new ArgumentOutOfRangeException(nameof(cell.Count));
-            }
-            else if (count > warehouseCell.Count)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count));
-            }
-
-            PutIn(product, count);
+            _order[product] += count;
         }
 
         public Order Order()
         {
-            string order = $"Ваша корзина\n";
+            string order = $"Ваша корзина:\n\n";
 
-            foreach (Cell cell in _order)
+            foreach (Good product in _order.Keys)
             {
-                _warehouse.Remove(cell.Product, cell.Count);
+                _warehouse.Remove(product, _order[product]); 
 
-                order += $"{cell.Product.Name}: {cell.Count}\n";
+                order += $"Товар: {product.Name}\nКол-во: {_order[product]}\n\n";
             }
 
             _order.Clear();
 
             return new Order(order);
         }
-
-        private void PutIn(Good product, int count)
-        {
-            Cell cartCell = _warehouse.GetCell(_order, product);
-
-            if (cartCell != null)
-            {
-                _order.Insert(_order.IndexOf(cartCell), new Cell(product, cartCell.Count + count));
-                _order.RemoveAt(_order.IndexOf(cartCell));
-                return;
-            }
-
-            _order.Add(new Cell(product, count));
-        }
-    }
-
-    public class Shop
-    {
-        public Shop(Warehouse warehouse) =>
-            Warehouse = warehouse ?? throw new ArgumentNullException(nameof(warehouse));
-
-        public Warehouse Warehouse { get; }
-
-        public Cart Cart() =>
-            new Cart(Warehouse);
-    }
-
-    public class Warehouse : IWarehouse
-    {
-        private readonly List<Cell> _cells;
-
-        public Warehouse() =>
-            _cells = new List<Cell>();
-
-        public IReadOnlyList<Cell> Cells =>
-            _cells;
-
-        public void Delive(Good product, int count) =>
-            _cells.Add(new Cell(product, count));
-
-        public void Remove(Good product, int count)
-        {
-            Cell reqieredCell = GetCell(_cells, product);
-
-            _cells.Insert(_cells.IndexOf(reqieredCell), new Cell(product, reqieredCell.Count - count));
-        }
-
-        public Cell GetCell(IReadOnlyList<Cell> cells, Good product) =>
-            cells.FirstOrDefault(cell => cell.Product == product);
-    }
-
-    public class Cell
-    {
-        public Cell(Good product, int count)
-        {
-            Product = product ?? throw new ArgumentNullException(nameof(product));
-            Count = count >= 0 ? count : throw new ArgumentOutOfRangeException(nameof(count));
-        }
-
-        public Good Product { get; }
-        public int Count { get; }
-    }
-
-    public class Good
-    {
-        public Good(string name) =>
-            Name = name;
-
-        public string Name { get; }
     }
 
     public class Order
@@ -161,14 +81,79 @@ namespace Test2
         public string Paylink { get; }
     }
 
+    public class Shop
+    {
+        private readonly Warehouse _warehouse;
+
+        public Shop(Warehouse warehouse) =>
+            _warehouse = warehouse ?? throw new ArgumentNullException($"'{nameof(warehouse)}' is null");
+
+        public Cart Cart() =>
+            new Cart(_warehouse);
+    }
+
     public interface IWarehouse
     {
-        IReadOnlyList<Cell> Cells { get; }
-
         void Remove(Good product, int count);
 
-        void Delive(Good product, int count);
+        bool Contains(Good product, int count);
+    }
 
-        Cell GetCell(IReadOnlyList<Cell> cells, Good product);
+    public class Warehouse : IWarehouse
+    {
+        private readonly IDictionary<Good, int> _goods = new Dictionary<Good, int>();
+
+        public void Delive(Good product, int count)
+        {
+            ExceptionCheck(product, count);
+
+            if (!_goods.ContainsKey(product))
+                _goods[product] = 0;
+
+            _goods[product] += count;
+        }
+
+        public void Remove(Good product, int count)
+        {
+            ExceptionCheck(product, count);
+
+            if (!Contains(product, count))
+                throw new InvalidOperationException($"'{product.Name}' doesn't exist in count of {count}");
+
+            _goods[product] -= count;
+        }
+
+        public bool Contains(Good product, int count)
+        {
+            if (!_goods.TryGetValue(product, out int value))
+                return false;                   
+
+            if (count > value) 
+                return false;
+
+            return true;
+        }
+
+        private void ExceptionCheck(Good product, int count)
+        {
+            if (product == null)
+                throw new ArgumentNullException($"'{nameof(product)}' is null");
+
+            if (count <= 0)
+                throw new ArgumentOutOfRangeException($"'{nameof(count)}' is less than or equal to zero");
+        }
+    }
+
+    public class Good
+    {
+        public Good(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentNullException($"'{nameof(name)}' string is empty");
+
+            Name = name;
+        }
+
+        public string Name { get; }
     }
 }
